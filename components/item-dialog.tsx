@@ -4,6 +4,7 @@ import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 
 import { DataFields } from "@/components/data-editors"
+import { LayoutItemsSorter } from "@/components/layout-items-sorter"
 import { LayoutFields, StyleFields } from "@/components/property-controls"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { CATALOG, CATALOG_BY_TYPE, type CatalogEntry } from "@/lib/catalog"
 import {
@@ -70,6 +72,8 @@ export function ItemDialog({
   const [text, setText] = useState(editingComponent?.text ?? CATALOG[0].initial)
   const [layoutKind, setLayoutKind] = useState<LayoutKind>(editingLayout?.kind ?? "grid")
   const [columns, setColumns] = useState(editingLayout?.columns ?? 2)
+  // Working copy of the layout's items; the Items tab edits it and Save writes it back.
+  const [cells, setCells] = useState<Item[][]>(editingLayout?.cells ?? [])
   const [gap, setGap] = useState<GapKey>(normalizeGap(editingLayout?.gap))
   const [style, setStyle] = useState<ItemStyle>(editing?.style ?? {})
   const [data, setData] = useState<ComponentData>(() => ({
@@ -97,12 +101,24 @@ export function ItemDialog({
     setStyle((s) => ({ ...s, [key]: value }))
   }
 
+  /** Type/column changes reshape the working items immediately so the Items tab stays accurate. */
+  function reshapeEditing(kind: LayoutKind, cols: number) {
+    if (!editingLayout) return
+    setLayoutKind(kind)
+    setColumns(cols)
+    setCells(reshapeLayout({ ...editingLayout, kind, cells }, kind, cols, gap).cells)
+  }
+
   /** Writes the edit form to the store (edit mode only). */
   function saveEdits() {
     if (editingLayout) {
       saveLayouts(
         updateItem(layouts, editingLayout.id, (it) => ({
-          ...reshapeLayout(it as Layout, layoutKind, columns, gap),
+          ...(it as Layout),
+          kind: layoutKind === "flex" ? "flex" : undefined,
+          columns: cells.length,
+          gap,
+          cells,
           style: cleanStyle(style),
         }))
       )
@@ -242,6 +258,57 @@ export function ItemDialog({
             </form>
           </div>
         </DialogContent>
+      ) : editingLayout ? (
+        <DialogContent
+          onClick={(e) => e.stopPropagation()}
+          className="flex h-dvh w-screen max-w-none flex-col gap-4 rounded-none p-6 sm:max-w-none"
+        >
+          <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4">
+            <DialogHeader>
+              <DialogTitle>Edit layout</DialogTitle>
+              <DialogDescription>
+                Reorder its items, change its structure, and style it with Tailwind.
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="items" className="flex min-h-0 flex-1 flex-col gap-4">
+              <TabsList>
+                <TabsTrigger value="items">Items</TabsTrigger>
+                <TabsTrigger value="layout">Layout</TabsTrigger>
+                <TabsTrigger value="style">Style</TabsTrigger>
+              </TabsList>
+              <TabsContent value="items" className="min-h-0 flex-1 overflow-y-auto p-1">
+                <LayoutItemsSorter cells={cells} flex={layoutKind === "flex"} onChange={setCells} />
+              </TabsContent>
+              <TabsContent value="layout" className="min-h-0 flex-1 overflow-y-auto p-1">
+                <div className="flex max-w-xl flex-col gap-3">
+                  <LayoutFields
+                    idPrefix="edit"
+                    kind={layoutKind}
+                    onKind={(k) => reshapeEditing(k, columns)}
+                    columns={columns}
+                    gap={gap}
+                    onColumns={(c) => reshapeEditing(layoutKind, c)}
+                    onGap={setGap}
+                  />
+                  <p className="text-sm text-neutral-500">
+                    Removed columns merge their content into the last one. Switching type keeps all items.
+                  </p>
+                </div>
+              </TabsContent>
+              <TabsContent value="style" className="min-h-0 flex-1 overflow-y-auto p-1">
+                <div className="max-w-xl">
+                  <StyleFields
+                    kind="layout"
+                    flexContainer={layoutKind === "flex"}
+                    style={style}
+                    onChange={setStyleKey}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+            <div className="flex">{actions}</div>
+          </form>
+        </DialogContent>
       ) : (
         <DialogContent
           onClick={(e) => e.stopPropagation()}
@@ -250,36 +317,22 @@ export function ItemDialog({
           <form onSubmit={submit} className="flex flex-col gap-5">
             <DialogHeader>
               <DialogTitle>
-                {editingLayout ? "Edit layout" : `Edit ${entry?.label ?? "component"}`}
+                {`Edit ${entry?.label ?? "component"}`}
               </DialogTitle>
               <DialogDescription>
-                {editingLayout
-                  ? "Removed columns merge their content into the last one. Switching type keeps all children."
-                  : "Content and Tailwind styling for this component."}
+                Content and Tailwind styling for this component.
               </DialogDescription>
             </DialogHeader>
 
-            {(editingLayout || hasTextField) && (
+            {hasTextField && (
               <section className="flex flex-col gap-3">
                 <h3 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-                  {editingLayout ? "Layout" : "Content"}
+                  Content
                 </h3>
-                {editingLayout ? (
-                  <LayoutFields
-                    idPrefix="edit"
-                    kind={layoutKind}
-                    onKind={setLayoutKind}
-                    columns={columns}
-                    gap={gap}
-                    onColumns={setColumns}
-                    onGap={setGap}
-                  />
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="text">{entry?.field}</Label>
-                    <Input id="text" value={text} onChange={(e) => setText(e.target.value)} />
-                  </div>
-                )}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="text">{entry?.field}</Label>
+                  <Input id="text" value={text} onChange={(e) => setText(e.target.value)} />
+                </div>
               </section>
             )}
 
@@ -356,8 +409,7 @@ export function ItemDialog({
                 Style
               </h3>
               <StyleFields
-                kind={editingLayout ? "layout" : "component"}
-                flexContainer={layoutKind === "flex"}
+                kind="component"
                 style={style}
                 onChange={setStyleKey}
               />
