@@ -116,6 +116,11 @@ export const SELF = {
   stretch: "self-stretch", baseline: "self-baseline",
 } as const
 
+export const JUSTIFY_SELF = {
+  auto: "justify-self-auto", start: "justify-self-start", center: "justify-self-center",
+  end: "justify-self-end", stretch: "justify-self-stretch",
+} as const
+
 export const ORDER = {
   first: "order-first", "1": "order-1", "2": "order-2", "3": "order-3", "4": "order-4",
   last: "order-last",
@@ -160,6 +165,7 @@ export type ItemStyle = {
   shrink?: keyof typeof SHRINK
   basis?: keyof typeof BASIS
   self?: keyof typeof SELF
+  justifySelf?: keyof typeof JUSTIFY_SELF
   order?: keyof typeof ORDER
 }
 
@@ -184,6 +190,7 @@ export function styleClasses(style: ItemStyle | undefined) {
     style.shrink && SHRINK[style.shrink],
     style.basis && BASIS[style.basis],
     style.self && SELF[style.self],
+    style.justifySelf && JUSTIFY_SELF[style.justifySelf],
     style.order && ORDER[style.order],
   ]
     .filter(Boolean)

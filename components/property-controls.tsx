@@ -17,6 +17,7 @@ import {
   GROW,
   ITEMS,
   JUSTIFY,
+  JUSTIFY_SELF,
   PADDING,
   ORDER,
   ROUNDED,
@@ -252,6 +253,7 @@ export function StyleFields({
         <StyleSelect label="Shrink" map={SHRINK} value={style.shrink} onChange={(v) => onChange("shrink", v)} />
         <StyleSelect label="Basis" map={BASIS} value={style.basis} onChange={(v) => onChange("basis", v)} />
         <StyleSelect label="Align self" map={SELF} value={style.self} onChange={(v) => onChange("self", v)} />
+        <StyleSelect label="Justify self" map={JUSTIFY_SELF} value={style.justifySelf} onChange={(v) => onChange("justifySelf", v)} />
         <StyleSelect label="Order" map={ORDER} value={style.order} onChange={(v) => onChange("order", v)} />
       </div>
     </div>
