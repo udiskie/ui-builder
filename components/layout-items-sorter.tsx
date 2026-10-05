@@ -166,7 +166,7 @@ export function LayoutItemsSorter({
     <div className="flex flex-col gap-3">
       <p className="text-sm text-neutral-500">
         {empty
-          ? "This layout has no items yet. Add some on the canvas with ctrl+click, then reorder them here."
+          ? "This layout has no items yet. Add some on the canvas with a right-click, then reorder them here."
           : flex
             ? "Drag items to change their order."
             : "Drag items to reorder them, or into another column. Press space on a handle to move with the keyboard."}

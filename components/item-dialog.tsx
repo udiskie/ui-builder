@@ -165,6 +165,20 @@ export function ItemDialog({
     </div>
   )
 
+  const deleteButton = editing && (
+    <Button
+      type="button"
+      variant="destructive"
+      onClick={() => {
+        saveLayouts(removeItem(layouts, editing.id))
+        onClose()
+      }}
+    >
+      <Trash2Icon />
+      Delete
+    </Button>
+  )
+
   const actions = (
     <div className="ml-auto flex gap-2">
       <Button type="button" variant="outline" onClick={onClose}>
@@ -306,7 +320,7 @@ export function ItemDialog({
                 </div>
               </TabsContent>
             </Tabs>
-            <div className="flex">{actions}</div>
+            <div className="flex">{deleteButton}{actions}</div>
           </form>
         </DialogContent>
       ) : (
@@ -415,7 +429,7 @@ export function ItemDialog({
               />
             </section>
 
-            <div className="flex">{actions}</div>
+            <div className="flex">{deleteButton}{actions}</div>
           </form>
         </DialogContent>
       )}
