@@ -141,6 +141,27 @@ export const CATALOG_MORE: CatalogEntry[] = [
         </AspectRatio>
       )
     } },
+  { type: "image", label: "Image", field: "Caption (optional)", initial: "", wrapperClass: "rounded-md",
+    fields: [
+      { key: "ratio", label: "Aspect ratio", kind: "select", options: ["16:9", "4:3", "3:2", "1:1", "3:4", "9:16", "21:9"] },
+      { key: "icon", label: "Icon", kind: "icon" },
+      { key: "iconSize", label: "Icon size", kind: "select", options: Object.keys(ICON_SIZE) },
+    ],
+    defaults: { ratio: "16:9", icon: "LuImage", iconSize: "10" },
+    // A wireframe placeholder: no upload, just a labelled box with an icon at the center.
+    render: (t, _k, d) => {
+      const [w, h] = dataString(d, "ratio", "16:9").split(":").map(Number)
+      const size = dataString(d, "iconSize", "10") as keyof typeof ICON_SIZE
+      return (
+        <AspectRatio
+          ratio={w / h}
+          className="flex w-full min-w-40 flex-col items-center justify-center gap-2 overflow-hidden rounded-[inherit] border border-neutral-200 bg-neutral-100 text-neutral-400"
+        >
+          <IconView name={dataString(d, "icon", "LuImage")} className={ICON_SIZE[size] ?? ICON_SIZE["10"]} />
+          {t && <span className="px-2 text-center text-xs">{t}</span>}
+        </AspectRatio>
+      )
+    } },
   { type: "attachment", label: "Attachment", field: "File name", initial: "report.pdf", render: (t) => (
     <Attachment>
       <AttachmentMedia><FileTextIcon /></AttachmentMedia>

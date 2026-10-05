@@ -73,7 +73,7 @@ function ComponentBlock({
     <div
       data-zone={editing ? "component" : undefined}
       data-id={component.id}
-      className={cn("flex", !inFlex && "w-full", styleClasses(component.style))}
+      className={cn("flex", !inFlex && "w-full", entry?.wrapperClass, styleClasses(component.style))}
     >
       {entry?.render(component.text, children, { ...entry.defaults, ...component.data }) ?? null}
     </div>

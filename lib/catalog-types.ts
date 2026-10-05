@@ -36,6 +36,8 @@ export type CatalogEntry = {
   render: (text: string, children?: ReactNode, data?: ComponentData) => ReactNode
   /** Whether the component accepts child items. */
   container?: boolean
+  /** Classes for the box around the component; the item's own style overrides them. */
+  wrapperClass?: string
   /** Data editors shown in the properties dialog. */
   fields?: DataField[]
   /** Starting values for `fields`. */
