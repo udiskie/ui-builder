@@ -1,9 +1,12 @@
+import { withIcon } from "@/components/icon-view"
 import { CATALOG_MORE } from "@/lib/catalog-more"
 import {
   dataList,
   dataNumber,
   dataPairs,
   dataTable,
+  ICON_DEFAULTS,
+  ICON_FIELDS,
   slot,
   type CatalogEntry,
 } from "@/lib/catalog-types"
@@ -125,9 +128,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const outline = <Button variant="outline" />
 
 export const CATALOG: CatalogEntry[] = [
-  { type: "heading", label: "Heading", field: "Text", initial: "Heading", render: (t) => <h2 className="text-2xl font-semibold">{t}</h2> },
-  { type: "text", label: "Text", field: "Text", initial: "Some text", render: (t) => <p className="text-sm">{t}</p> },
-  { type: "button", label: "Button", field: "Label", initial: "Click me", render: (t) => <Button>{t}</Button> },
+  { type: "heading", label: "Heading", field: "Text", initial: "Heading", render: (t, _k, d) => <h2 className="text-2xl font-semibold">{withIcon(t, d)}</h2> },
+  { type: "text", label: "Text", field: "Text", initial: "Some text", render: (t, _k, d) => <p className="text-sm">{withIcon(t, d)}</p> },
+  { type: "button", label: "Button", field: "Label", initial: "Click me", render: (t, _k, d) => <Button>{withIcon(t, d)}</Button> },
   { type: "button-group", label: "Button Group", field: "Unused", initial: "",
     fields: [{ key: "buttons", label: "Buttons", kind: "list" }],
     defaults: { buttons: ["Option 1", "Option 2", "Option 3"] },
@@ -160,7 +163,7 @@ export const CATALOG: CatalogEntry[] = [
       )
     } },
   { type: "textarea", label: "Textarea", field: "Placeholder", initial: "Write a message...", render: (t) => <Textarea placeholder={t} /> },
-  { type: "label", label: "Label", field: "Text", initial: "Label", render: (t) => <Label>{t}</Label> },
+  { type: "label", label: "Label", field: "Text", initial: "Label", render: (t, _k, d) => <Label>{withIcon(t, d)}</Label> },
   { type: "field", label: "Field", field: "Label", initial: "Email", render: (t) => (
     <Field>
       <FieldLabel>{t}</FieldLabel>
@@ -229,7 +232,7 @@ export const CATALOG: CatalogEntry[] = [
         </div>
       )
     } },
-  { type: "toggle", label: "Toggle", field: "Label", initial: "Bold", render: (t) => <Toggle variant="outline">{t}</Toggle> },
+  { type: "toggle", label: "Toggle", field: "Label", initial: "Bold", render: (t, _k, d) => <Toggle variant="outline">{withIcon(t, d)}</Toggle> },
   { type: "toggle-group", label: "Toggle Group", field: "Unused", initial: "",
     fields: [{ key: "items", label: "Items", kind: "list" }],
     defaults: { items: ["Item 1", "Item 2", "Item 3"] },
@@ -239,27 +242,27 @@ export const CATALOG: CatalogEntry[] = [
       </ToggleGroup>
     ) },
   { type: "calendar", label: "Calendar", field: "Unused", initial: "", render: () => <Calendar mode="single" /> },
-  { type: "badge", label: "Badge", field: "Text", initial: "Badge", render: (t) => <Badge>{t}</Badge> },
+  { type: "badge", label: "Badge", field: "Text", initial: "Badge", render: (t, _k, d) => <Badge>{withIcon(t, d)}</Badge> },
   { type: "kbd", label: "Kbd", field: "Keys", initial: "Ctrl", render: (t) => <Kbd>{t}</Kbd> },
   { type: "avatar", label: "Avatar", field: "Initials", initial: "AB", render: (t) => (
     <Avatar><AvatarFallback>{t}</AvatarFallback></Avatar>
   ) },
-  { type: "alert", label: "Alert", field: "Title", initial: "Heads up!", container: true, render: (t, kids) => (
-    <Alert><AlertTitle>{t}</AlertTitle><AlertDescription>{slot(kids, "You can add components to your app.")}</AlertDescription></Alert>
+  { type: "alert", label: "Alert", field: "Title", initial: "Heads up!", container: true, render: (t, kids, d) => (
+    <Alert><AlertTitle>{withIcon(t, d)}</AlertTitle><AlertDescription>{slot(kids, "You can add components to your app.")}</AlertDescription></Alert>
   ) },
-  { type: "card", label: "Card", field: "Title", initial: "Card title", container: true, render: (t, kids) => (
+  { type: "card", label: "Card", field: "Title", initial: "Card title", container: true, render: (t, kids, d) => (
     <Card className="w-full">
-      <CardHeader><CardTitle>{t}</CardTitle><CardDescription>Card description</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{withIcon(t, d)}</CardTitle><CardDescription>Card description</CardDescription></CardHeader>
       <CardContent>{slot(kids, "Card content")}</CardContent>
     </Card>
   ) },
-  { type: "item", label: "Item", field: "Title", initial: "Item title", container: true, render: (t, kids) => (
+  { type: "item", label: "Item", field: "Title", initial: "Item title", container: true, render: (t, kids, d) => (
     <Item variant="outline" className="w-full">
-      <ItemContent><ItemTitle>{t}</ItemTitle><ItemDescription>Item description</ItemDescription>{kids}</ItemContent>
+      <ItemContent><ItemTitle>{withIcon(t, d)}</ItemTitle><ItemDescription>Item description</ItemDescription>{kids}</ItemContent>
     </Item>
   ) },
-  { type: "empty", label: "Empty", field: "Title", initial: "Nothing here yet", container: true, render: (t, kids) => (
-    <Empty><EmptyHeader><EmptyTitle>{t}</EmptyTitle><EmptyDescription>Add something to get started.</EmptyDescription></EmptyHeader>{kids && <EmptyContent>{kids}</EmptyContent>}</Empty>
+  { type: "empty", label: "Empty", field: "Title", initial: "Nothing here yet", container: true, render: (t, kids, d) => (
+    <Empty><EmptyHeader><EmptyTitle>{withIcon(t, d)}</EmptyTitle><EmptyDescription>Add something to get started.</EmptyDescription></EmptyHeader>{kids && <EmptyContent>{kids}</EmptyContent>}</Empty>
   ) },
   { type: "separator", label: "Separator", field: "Unused", initial: "", render: () => <Separator className="w-full" /> },
   { type: "progress", label: "Progress", field: "Label", initial: "Uploading",
@@ -392,29 +395,29 @@ export const CATALOG: CatalogEntry[] = [
     fields: [{ key: "items", label: "Menu items", kind: "list" }],
     defaults: { items: ["Profile", "Settings"] },
     render: (t, _k, d) => (
-      <DropdownMenu><DropdownMenuTrigger render={outline}>{t}</DropdownMenuTrigger>
+      <DropdownMenu><DropdownMenuTrigger render={outline}>{withIcon(t, d)}</DropdownMenuTrigger>
         <DropdownMenuContent>
           {dataList(d, "items").map((it, i) => <DropdownMenuItem key={i}>{it}</DropdownMenuItem>)}
         </DropdownMenuContent>
       </DropdownMenu>
     ) },
-  { type: "dialog", label: "Dialog", field: "Title", initial: "Dialog title", container: true, render: (t, kids) => (
+  { type: "dialog", label: "Dialog", field: "Title", initial: "Dialog title", container: true, render: (t, kids, d) => (
     <Dialog><DialogTrigger render={outline}>Open dialog</DialogTrigger>
-      <DialogContent><DialogHeader><DialogTitle>{t}</DialogTitle><DialogDescription>Dialog description.</DialogDescription></DialogHeader>{kids}</DialogContent>
+      <DialogContent><DialogHeader><DialogTitle>{withIcon(t, d)}</DialogTitle><DialogDescription>Dialog description.</DialogDescription></DialogHeader>{kids}</DialogContent>
     </Dialog>
   ) },
-  { type: "alert-dialog", label: "Alert Dialog", field: "Title", initial: "Are you sure?", container: true, render: (t, kids) => (
+  { type: "alert-dialog", label: "Alert Dialog", field: "Title", initial: "Are you sure?", container: true, render: (t, kids, d) => (
     <AlertDialog><AlertDialogTrigger render={outline}>Open alert dialog</AlertDialogTrigger>
       <AlertDialogContent>
-        <AlertDialogHeader><AlertDialogTitle>{t}</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogHeader><AlertDialogTitle>{withIcon(t, d)}</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
         {kids}
         <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction>Continue</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   ) },
-  { type: "sheet", label: "Sheet", field: "Title", initial: "Sheet title", container: true, render: (t, kids) => (
+  { type: "sheet", label: "Sheet", field: "Title", initial: "Sheet title", container: true, render: (t, kids, d) => (
     <Sheet><SheetTrigger render={outline}>Open sheet</SheetTrigger>
-      <SheetContent><SheetHeader><SheetTitle>{t}</SheetTitle><SheetDescription>Sheet description.</SheetDescription></SheetHeader>{kids && <div className="px-4">{kids}</div>}</SheetContent>
+      <SheetContent><SheetHeader><SheetTitle>{withIcon(t, d)}</SheetTitle><SheetDescription>Sheet description.</SheetDescription></SheetHeader>{kids && <div className="px-4">{kids}</div>}</SheetContent>
     </Sheet>
   ) },
 ]
@@ -422,5 +425,18 @@ export const CATALOG: CatalogEntry[] = [
 export { slot, type CatalogEntry }
 
 CATALOG.push(...CATALOG_MORE)
+
+/** Components whose text can carry an icon beside it (data keys `icon` and `iconPosition`). */
+const WITH_ICON = new Set([
+  "heading", "text", "button", "label", "toggle", "badge", "alert", "card", "item", "empty",
+  "dropdown-menu", "dialog", "alert-dialog", "sheet", "drawer", "toast",
+  "typography-h1", "typography-h2", "typography-h3", "typography-h4", "typography-p",
+  "typography-lead", "typography-blockquote", "typography-muted",
+])
+CATALOG.forEach((e, i) => {
+  if (WITH_ICON.has(e.type)) {
+    CATALOG[i] = { ...e, fields: [...(e.fields ?? []), ...ICON_FIELDS], defaults: { ...ICON_DEFAULTS, ...e.defaults } }
+  }
+})
 
 export const CATALOG_BY_TYPE = new Map(CATALOG.map((c) => [c.type, c]))

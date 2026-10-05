@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 
 import { IconView, usePack } from "@/components/icon-view"
 import { OptionSelect } from "@/components/property-controls"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useGlobals } from "@/lib/globals-store"
 import { ICON_PACK_KEYS, iconPack, packOfIcon } from "@/lib/icon-packs"
@@ -12,7 +13,16 @@ import { cn } from "@/lib/utils"
 const MAX_RESULTS = 96
 
 /** Search and pick a react-icons icon. Opens on the icon's own library, else the global default. */
-export function IconField({ value, onChange }: { value: string; onChange: (name: string) => void }) {
+export function IconField({
+  value,
+  onChange,
+  optional = false,
+}: {
+  value: string
+  onChange: (name: string) => void
+  /** Show a "No icon" button that clears the value. */
+  optional?: boolean
+}) {
   const globals = useGlobals()
   const [lib, setLib] = useState(packOfIcon(value)?.key ?? globals.iconLibrary)
   const [query, setQuery] = useState("")
@@ -38,7 +48,12 @@ export function IconField({ value, onChange }: { value: string; onChange: (name:
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2 rounded-md border bg-neutral-50 p-2">
         <IconView name={value} className="size-6" />
-        <span className="min-w-0 truncate text-sm">{value || "No icon selected"}</span>
+        <span className="min-w-0 flex-1 truncate text-sm">{value || "No icon"}</span>
+        {optional && value && (
+          <Button type="button" variant="ghost" size="xs" onClick={() => onChange("")}>
+            Remove
+          </Button>
+        )}
       </div>
       <div className="flex gap-2">
         <OptionSelect<string>

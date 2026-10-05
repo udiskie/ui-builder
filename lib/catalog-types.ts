@@ -16,7 +16,7 @@ export type DataField = { key: string; label: string } & (
   | { kind: "pairs"; a: string; b: string }
   | { kind: "points" }
   | { kind: "table" }
-  | { kind: "icon" }
+  | { kind: "icon"; /** Offers a "No icon" choice; the value is then "". */ optional?: boolean }
   | { kind: "number"; min?: number; max?: number; step?: number }
   | { kind: "select"; options: string[] }
 )
@@ -76,3 +76,11 @@ export const dataString = (d: ComponentData | undefined, key: string, fallback: 
 }
 /** Splits "a, b, c" into trimmed non-empty parts. */
 export const splitCsv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean)
+
+/** Editors added to every component whose text can carry an icon beside it. */
+export const ICON_FIELDS: DataField[] = [
+  { key: "icon", label: "Icon beside text", kind: "icon", optional: true },
+  { key: "iconPosition", label: "Icon position", kind: "select", options: ["left", "right"] },
+]
+
+export const ICON_DEFAULTS: ComponentData = { icon: "", iconPosition: "left" }

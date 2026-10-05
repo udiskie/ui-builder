@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { withIcon } from "@/components/icon-view"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -94,13 +95,24 @@ export function DatePickerDemo({ placeholder }: { placeholder: string }) {
   )
 }
 
-export function ToastDemo({ label }: { label: string }) {
+export function ToastDemo({
+  label,
+  icon,
+  iconPosition,
+}: {
+  label: string
+  icon: string
+  iconPosition: string
+}) {
+  const data = { icon, iconPosition }
   return (
     <Button
       variant="outline"
-      onClick={() => toast.add({ title: label, description: "This is a toast notification." })}
+      onClick={() =>
+        toast.add({ title: withIcon(label, data), description: "This is a toast notification." })
+      }
     >
-      Show toast
+      {withIcon("Show toast", data)}
     </Button>
   )
 }

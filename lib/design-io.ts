@@ -154,6 +154,11 @@ function exportItem(item: Item, nextId: () => string): Node {
   if (item.text) props.text = item.text
   // Effective data (defaults merged in), so the file says exactly what is rendered.
   Object.assign(props, entry?.defaults, item.data)
+  // An unset icon is noise: leave `icon` and `iconPosition` out entirely.
+  if (props.icon === "") {
+    delete props.icon
+    delete props.iconPosition
+  }
   const classes = styleClasses(item.style)
   if (classes) props.className = classes
   if (item.style) props.style = item.style as Json

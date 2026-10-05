@@ -184,7 +184,7 @@ function FieldEditor({ field, data, onChange }: { field: DataField; data: Compon
     case "table":
       return <TableEditor table={dataTable(data, field.key)} onChange={onChange} />
     case "icon":
-      return <IconField value={dataString(data, field.key, "")} onChange={onChange} />
+      return <IconField value={dataString(data, field.key, "")} onChange={onChange} optional={field.optional} />
     case "number":
       return (
         <Input

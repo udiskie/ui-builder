@@ -1,7 +1,7 @@
 import { FileTextIcon } from "lucide-react"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
-import { IconView } from "@/components/icon-view"
+import { IconView, withIcon } from "@/components/icon-view"
 import { DataTableDemo, DatePickerDemo, ToastDemo } from "@/components/demos"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
@@ -304,11 +304,11 @@ export const CATALOG_MORE: CatalogEntry[] = [
       </DirectionProvider>
     )
   } },
-  { type: "drawer", label: "Drawer", field: "Title", initial: "Drawer title", container: true, render: (t, kids) => (
+  { type: "drawer", label: "Drawer", field: "Title", initial: "Drawer title", container: true, render: (t, kids, d) => (
     <Drawer>
       <DrawerTrigger render={outline}>Open drawer</DrawerTrigger>
       <DrawerContent>
-        <DrawerHeader><DrawerTitle>{t}</DrawerTitle><DrawerDescription>Drawer description.</DrawerDescription></DrawerHeader>
+        <DrawerHeader><DrawerTitle>{withIcon(t, d)}</DrawerTitle><DrawerDescription>Drawer description.</DrawerDescription></DrawerHeader>
         {kids && <div className="px-4 pb-4">{kids}</div>}
       </DrawerContent>
     </Drawer>
@@ -378,19 +378,19 @@ export const CATALOG_MORE: CatalogEntry[] = [
         <SidebarInset className="p-4 text-sm">{slot(kids, "Main content")}</SidebarInset>
       </SidebarProvider>
     ) },
-  { type: "toast", label: "Toast", field: "Toast title", initial: "Event created", render: (t) => <ToastDemo label={t} /> },
-  { type: "typography-h1", label: "Typography · H1", field: "Text", initial: "Heading 1", render: (t) => <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight text-balance">{t}</h1> },
-  { type: "typography-h2", label: "Typography · H2", field: "Text", initial: "Heading 2", render: (t) => <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">{t}</h2> },
-  { type: "typography-h3", label: "Typography · H3", field: "Text", initial: "Heading 3", render: (t) => <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">{t}</h3> },
-  { type: "typography-h4", label: "Typography · H4", field: "Text", initial: "Heading 4", render: (t) => <h4 className="scroll-m-20 text-xl font-semibold tracking-tight">{t}</h4> },
-  { type: "typography-p", label: "Typography · Paragraph", field: "Text", initial: "The king, seeing how much happier his subjects were, realized the error of his ways.", render: (t) => <p className="leading-7">{t}</p> },
-  { type: "typography-lead", label: "Typography · Lead", field: "Text", initial: "A modal dialog that interrupts the user with important content.", render: (t) => <p className="text-xl text-muted-foreground">{t}</p> },
-  { type: "typography-blockquote", label: "Typography · Blockquote", field: "Text", initial: "After all, everyone enjoys a good joke.", render: (t) => <blockquote className="border-l-2 pl-6 italic">{t}</blockquote> },
+  { type: "toast", label: "Toast", field: "Toast title", initial: "Event created", render: (t, _k, d) => <ToastDemo label={t} icon={dataString(d, "icon", "")} iconPosition={dataString(d, "iconPosition", "left")} /> },
+  { type: "typography-h1", label: "Typography · H1", field: "Text", initial: "Heading 1", render: (t, _k, d) => <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight text-balance">{withIcon(t, d)}</h1> },
+  { type: "typography-h2", label: "Typography · H2", field: "Text", initial: "Heading 2", render: (t, _k, d) => <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight">{withIcon(t, d)}</h2> },
+  { type: "typography-h3", label: "Typography · H3", field: "Text", initial: "Heading 3", render: (t, _k, d) => <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">{withIcon(t, d)}</h3> },
+  { type: "typography-h4", label: "Typography · H4", field: "Text", initial: "Heading 4", render: (t, _k, d) => <h4 className="scroll-m-20 text-xl font-semibold tracking-tight">{withIcon(t, d)}</h4> },
+  { type: "typography-p", label: "Typography · Paragraph", field: "Text", initial: "The king, seeing how much happier his subjects were, realized the error of his ways.", render: (t, _k, d) => <p className="leading-7">{withIcon(t, d)}</p> },
+  { type: "typography-lead", label: "Typography · Lead", field: "Text", initial: "A modal dialog that interrupts the user with important content.", render: (t, _k, d) => <p className="text-xl text-muted-foreground">{withIcon(t, d)}</p> },
+  { type: "typography-blockquote", label: "Typography · Blockquote", field: "Text", initial: "After all, everyone enjoys a good joke.", render: (t, _k, d) => <blockquote className="border-l-2 pl-6 italic">{withIcon(t, d)}</blockquote> },
   { type: "typography-list", label: "Typography · List", field: "Items (comma separated)", initial: "First item, Second item, Third item", render: (t) => (
     <ul className="ml-6 list-disc [&>li]:mt-2">{t.split(",").map((i, n) => <li key={n}>{i.trim()}</li>)}</ul>
   ) },
   { type: "typography-code", label: "Typography · Inline code", field: "Code", initial: "@radix-ui/react-alert-dialog", render: (t) => (
     <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">{t}</code>
   ) },
-  { type: "typography-muted", label: "Typography · Muted", field: "Text", initial: "Enter your email address.", render: (t) => <p className="text-sm text-muted-foreground">{t}</p> },
+  { type: "typography-muted", label: "Typography · Muted", field: "Text", initial: "Enter your email address.", render: (t, _k, d) => <p className="text-sm text-muted-foreground">{withIcon(t, d)}</p> },
 ]
