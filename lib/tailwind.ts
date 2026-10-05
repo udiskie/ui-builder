@@ -203,6 +203,11 @@ export const TEXT_ALIGN = {
 
 export const THEME = { light: "", dark: "dark" } as const
 
+export const ICON_SIZE = {
+  "4": "size-4", "5": "size-5", "6": "size-6", "8": "size-8",
+  "10": "size-10", "12": "size-12", "16": "size-16",
+} as const
+
 export type GlobalProps = {
   background: ColorToken
   textColor: ColorToken
@@ -213,6 +218,12 @@ export type GlobalProps = {
   font: keyof typeof FONT
   fontSize: keyof typeof FONT_SIZE
   textAlign: keyof typeof TEXT_ALIGN
+  /** Google Fonts family for headings; "" keeps the theme font. */
+  headingFont: string
+  /** Google Fonts family for paragraphs and other text; "" keeps the theme font. */
+  bodyFont: string
+  /** Default react-icons library for the icon picker (see lib/icon-packs.ts). */
+  iconLibrary: string
 }
 
 export const DEFAULT_GLOBALS: GlobalProps = {
@@ -225,6 +236,9 @@ export const DEFAULT_GLOBALS: GlobalProps = {
   font: "sans",
   fontSize: "base",
   textAlign: "left",
+  headingFont: "",
+  bodyFont: "",
+  iconLibrary: "lu",
 }
 
 /** Classes for the page background, text and typography. */

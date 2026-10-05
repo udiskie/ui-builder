@@ -1,11 +1,14 @@
 "use client"
 
 import { Settings2Icon, XIcon } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ColorPicker, OptionSelect, Row, Section, keys } from "@/components/property-controls"
 import { useGlobals, saveGlobals } from "@/lib/globals-store"
+import { FONT_NAME, loadGoogleFont, POPULAR_FONTS } from "@/lib/google-fonts"
+import { ICON_PACK_KEYS, iconPack } from "@/lib/icon-packs"
 import {
   DEFAULT_GLOBALS,
   FONT,
@@ -17,6 +20,94 @@ import {
   THEME,
   type GlobalProps,
 } from "@/lib/tailwind"
+
+type FontStatus = "idle" | "loading" | "ok" | "error" | "invalid"
+
+const FONT_STATUS_TEXT: Record<FontStatus, string> = {
+  idle: "",
+  loading: "Loading from Google Fonts…",
+  ok: "Loaded.",
+  error: "Not found on Google Fonts.",
+  invalid: "Use letters, digits and spaces only.",
+}
+
+/**
+ * A Google Fonts family input. Typing is debounced; the family is only applied once Google
+ * Fonts confirms it exists, so a typo never replaces a working font.
+ */
+function FontField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (family: string) => void
+}) {
+  const listId = useId()
+  const [draft, setDraft] = useState(value)
+  const [status, setStatus] = useState<FontStatus>("idle")
+  const latest = useRef({ value, onChange })
+  useEffect(() => {
+    latest.current = { value, onChange }
+  })
+
+  // Follow external changes (Reset to defaults, importing a design).
+  const [seen, setSeen] = useState(value)
+  if (value !== seen) {
+    setSeen(value)
+    setDraft(value)
+  }
+
+  useEffect(() => {
+    const name = draft.trim()
+    if (name === latest.current.value) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      if (name === "") {
+        latest.current.onChange("")
+        setStatus("idle")
+      } else if (!FONT_NAME.test(name)) {
+        setStatus("invalid")
+      } else {
+        setStatus("loading")
+        const ok = await loadGoogleFont(name)
+        if (cancelled) return
+        if (ok) latest.current.onChange(name)
+        setStatus(ok ? "ok" : "error")
+      }
+    }, 500)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [draft])
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Row label={label}>
+        <Input
+          aria-label={`${label} font`}
+          list={listId}
+          placeholder="Theme default"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <datalist id={listId}>
+          {POPULAR_FONTS.map((f) => <option key={f} value={f} />)}
+        </datalist>
+      </Row>
+      {status !== "idle" && (
+        <p
+          role="status"
+          className={`pl-[7.5rem] text-xs ${status === "error" || status === "invalid" ? "text-red-600" : "text-neutral-500"}`}
+        >
+          {FONT_STATUS_TEXT[status]}
+        </p>
+      )}
+    </div>
+  )
+}
 
 /** Floating button that opens a non-modal side panel, so changes show live on the page behind it. */
 export function GlobalProperties() {
@@ -125,6 +216,29 @@ export function GlobalProperties() {
                 onChange={(v) => set("textAlign", v)}
               />
             </Row>
+          </Section>
+
+          <Section title="Fonts">
+            <FontField label="Headings" value={globals.headingFont} onChange={(v) => set("headingFont", v)} />
+            <FontField label="Paragraphs" value={globals.bodyFont} onChange={(v) => set("bodyFont", v)} />
+            <p className="text-xs text-neutral-500">
+              Any family from fonts.google.com. Leave empty for the theme font.
+            </p>
+          </Section>
+
+          <Section title="Icons">
+            <Row label="Library">
+              <OptionSelect<string>
+                label="Icon library"
+                value={globals.iconLibrary}
+                options={ICON_PACK_KEYS}
+                format={(k) => iconPack(k).label}
+                onChange={(v) => set("iconLibrary", v)}
+              />
+            </Row>
+            <p className="text-xs text-neutral-500">
+              react-icons set the Icon picker opens on. Lucide is the default.
+            </p>
           </Section>
 
           <Button variant="outline" onClick={() => saveGlobals(DEFAULT_GLOBALS)}>

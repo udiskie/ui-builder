@@ -1,4 +1,6 @@
 import { CATALOG, CATALOG_BY_TYPE } from "@/lib/catalog"
+import { FONT_NAME, fontStylesheetUrl } from "@/lib/google-fonts"
+import { ICON_PACK_KEYS } from "@/lib/icon-packs"
 import {
   isLayout,
   type Item,
@@ -70,7 +72,8 @@ const STYLE_OPTIONS: Record<keyof ItemStyle, readonly string[]> = {
   order: Object.keys(ORDER),
 }
 
-const GLOBAL_OPTIONS: Record<keyof GlobalProps, readonly string[]> = {
+/** Options for the globals that are picked from a fixed list. */
+const GLOBAL_OPTIONS: Record<Exclude<keyof GlobalProps, "headingFont" | "bodyFont">, readonly string[]> = {
   background: COLOR_TOKENS,
   textColor: COLOR_TOKENS,
   theme: Object.keys(THEME),
@@ -80,6 +83,7 @@ const GLOBAL_OPTIONS: Record<keyof GlobalProps, readonly string[]> = {
   font: Object.keys(FONT),
   fontSize: Object.keys(FONT_SIZE),
   textAlign: Object.keys(TEXT_ALIGN),
+  iconLibrary: ICON_PACK_KEYS,
 }
 
 // ---------------------------------------------------------------- names
@@ -174,6 +178,9 @@ export function exportDesign(layouts: Layout[], globals: GlobalProps): string {
       pageClasses: pageClasses(globals),
       containerClasses: containerClasses(globals),
       layoutGapClass: gapClass(globals),
+      fontStylesheets: [globals.headingFont, globals.bodyFont]
+        .filter((f, i, all) => f && all.indexOf(f) === i)
+        .map(fontStylesheetUrl),
     },
     layouts: layouts.map((l) => exportItem(l, nextId)) as unknown as Json,
   })
@@ -289,6 +296,11 @@ function parseGlobals(raw: unknown, warnings: string[]): GlobalProps {
   if (raw === undefined) return out as unknown as GlobalProps
   if (!isObject(raw)) throw new DesignError("globals must be an object")
   for (const [key, value] of Object.entries(raw)) {
+    if (key === "headingFont" || key === "bodyFont") {
+      if (value === "" || (typeof value === "string" && FONT_NAME.test(value))) out[key] = value
+      else warnings.push(`globals.${key}: "${String(value)}" is not a Google Fonts family name, ignored`)
+      continue
+    }
     const allowed = (GLOBAL_OPTIONS as Record<string, readonly string[]>)[key]
     if (!allowed) warnings.push(`globals.${key}: unknown property ignored`)
     else if (typeof value !== "string" || !allowed.includes(value)) {

@@ -1,6 +1,7 @@
 import { FileTextIcon } from "lucide-react"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
+import { IconView } from "@/components/icon-view"
 import { DataTableDemo, DatePickerDemo, ToastDemo } from "@/components/demos"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
@@ -114,10 +115,21 @@ import {
   splitCsv,
   type CatalogEntry,
 } from "@/lib/catalog-types"
+import { ICON_SIZE } from "@/lib/tailwind"
 
 const outline = <Button variant="outline" />
 
 export const CATALOG_MORE: CatalogEntry[] = [
+  { type: "icon", label: "Icon", field: "Unused", initial: "",
+    fields: [
+      { key: "icon", label: "Icon", kind: "icon" },
+      { key: "size", label: "Size", kind: "select", options: Object.keys(ICON_SIZE) },
+    ],
+    defaults: { icon: "LuStar", size: "6" },
+    render: (_t, _k, d) => {
+      const size = dataString(d, "size", "6") as keyof typeof ICON_SIZE
+      return <IconView name={dataString(d, "icon", "LuStar")} className={ICON_SIZE[size] ?? ICON_SIZE["6"]} />
+    } },
   { type: "aspect-ratio", label: "Aspect Ratio", field: "Placeholder", initial: "16:9", container: true,
     fields: [{ key: "ratio", label: "Ratio", kind: "select", options: ["16:9", "4:3", "3:2", "1:1", "21:9"] }],
     defaults: { ratio: "16:9" },
