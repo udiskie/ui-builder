@@ -2,6 +2,7 @@
 
 import { PlusIcon, Trash2Icon } from "lucide-react"
 
+import { ColorInput } from "@/components/color-input"
 import { IconField } from "@/components/icon-picker"
 import { OptionSelect } from "@/components/property-controls"
 import { Button } from "@/components/ui/button"
@@ -183,6 +184,8 @@ function FieldEditor({ field, data, onChange }: { field: DataField; data: Compon
       return <PointsEditor points={dataPoints(data, field.key)} onChange={onChange} />
     case "table":
       return <TableEditor table={dataTable(data, field.key)} onChange={onChange} />
+    case "color":
+      return <ColorInput value={dataString(data, field.key, "")} onChange={onChange} placeholder="No color" />
     case "icon":
       return <IconField value={dataString(data, field.key, "")} onChange={onChange} optional={field.optional} />
     case "number":

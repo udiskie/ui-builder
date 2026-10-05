@@ -16,6 +16,7 @@ export type DataField = { key: string; label: string } & (
   | { kind: "pairs"; a: string; b: string }
   | { kind: "points" }
   | { kind: "table" }
+  | { kind: "color" }
   | { kind: "icon"; /** Offers a "No icon" choice; the value is then "". */ optional?: boolean }
   | { kind: "number"; min?: number; max?: number; step?: number }
   | { kind: "select"; options: string[] }

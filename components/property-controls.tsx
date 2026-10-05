@@ -1,13 +1,12 @@
 "use client"
 
+import { ColorInput } from "@/components/color-input"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import {
   ALIGN_CONTENT,
   BASIS,
-  COLOR_FAMILIES,
-  COLOR_SHADES,
   DIRECTION,
   FONT_SIZE,
   FONT_WEIGHT,
@@ -25,13 +24,10 @@ import {
   SHRINK,
   WIDTH,
   WRAP,
-  joinColor,
-  parseColor,
   type GapKey,
   type ItemStyle,
 } from "@/lib/tailwind"
 import type { LayoutKind } from "@/lib/layout-store"
-import { cn } from "@/lib/utils"
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -89,34 +85,18 @@ export function ColorPicker({
   label: string
   value: string
   onChange: (token: string) => void
-  /** Adds a "none" choice that yields an empty token. */
+  /** Allows clearing the color to "" (no color). */
   optional?: boolean
 }) {
-  const { family, shade } = value ? parseColor(value) : { family: "none", shade: "" }
-  const hasShade = family !== "white" && family !== "black" && family !== "none"
   return (
     <Row label={label}>
-      <span
-        className={cn(
-          "size-8 shrink-0 rounded-md border border-neutral-300",
-          value && `bg-${value}`
-        )}
-        aria-hidden
+      <ColorInput
+        value={value}
+        onChange={onChange}
+        placeholder="None"
+        clearable={optional}
+        className="w-full min-w-0"
       />
-      <OptionSelect
-        label={`${label} color`}
-        value={family}
-        options={[...(optional ? ["none"] : []), "white", "black", ...COLOR_FAMILIES]}
-        onChange={(f) => onChange(joinColor(f, shade))}
-      />
-      {hasShade && (
-        <OptionSelect
-          label={`${label} shade`}
-          value={shade}
-          options={COLOR_SHADES}
-          onChange={(s) => onChange(joinColor(family, s))}
-        />
-      )}
     </Row>
   )
 }

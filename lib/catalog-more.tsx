@@ -2,7 +2,7 @@ import { FileTextIcon } from "lucide-react"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
 import { IconView, withIcon } from "@/components/icon-view"
-import { DataTableDemo, DatePickerDemo, ToastDemo } from "@/components/demos"
+import { ColorPickerDemo, DataTableDemo, DatePickerDemo, ToastDemo } from "@/components/demos"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import {
@@ -293,6 +293,10 @@ export const CATALOG_MORE: CatalogEntry[] = [
       ],
     } },
     render: (t, _k, d) => <DataTableDemo placeholder={t} {...dataTable(d, "table")} /> },
+  { type: "color-picker", label: "Color Picker", field: "Placeholder", initial: "Pick a color",
+    fields: [{ key: "value", label: "Initial color", kind: "color" }],
+    defaults: { value: "" },
+    render: (t, _k, d) => <ColorPickerDemo key={dataString(d, "value", "")} placeholder={t} initial={dataString(d, "value", "")} /> },
   { type: "date-picker", label: "Date Picker", field: "Placeholder", initial: "Pick a date", render: (t) => <DatePickerDemo placeholder={t} /> },
   { type: "direction", label: "Direction", field: "Direction (ltr or rtl)", initial: "rtl", container: true, render: (t, kids) => {
     const dir = t.trim().toLowerCase() === "ltr" ? "ltr" : "rtl"

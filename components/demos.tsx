@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import { ColorInput } from "@/components/color-input"
 import { withIcon } from "@/components/icon-view"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -93,6 +94,12 @@ export function DatePickerDemo({ placeholder }: { placeholder: string }) {
       </PopoverContent>
     </Popover>
   )
+}
+
+/** A color field you can try out; the chosen color lives in the component, like the date picker's. */
+export function ColorPickerDemo({ placeholder, initial }: { placeholder: string; initial: string }) {
+  const [color, setColor] = useState(initial)
+  return <ColorInput value={color} onChange={setColor} placeholder={placeholder} />
 }
 
 export function ToastDemo({
