@@ -1,8 +1,10 @@
+import { arrangement, type CellConfig } from "@/lib/arrange"
 import { CATALOG, CATALOG_BY_TYPE } from "@/lib/catalog"
 import { FONT_NAME, fontStylesheetUrl } from "@/lib/google-fonts"
 import { ICON_PACK_KEYS } from "@/lib/icon-packs"
 import {
   isLayout,
+  layoutRows,
   type Item,
   type Layout,
   type LayoutKind,
@@ -99,7 +101,9 @@ const TYPE_BY_COMPONENT = new Map(CATALOG.map((c) => [componentName(c.type), c.t
 /** Node names that are structural rather than catalog components. */
 const GRID = "Grid"
 const FLEX = "Flex"
-const COLUMN = "Column"
+const CELL = "Cell"
+/** Older files called grid cells "Column" (a grid then had a single row). */
+const LEGACY_CELL = "Column"
 
 // ---------------------------------------------------------------- export
 
@@ -124,6 +128,12 @@ function stableStringify(value: Json): string {
 
 type Node = { id: string; component: string; props: { [key: string]: Json } }
 
+/** Writes a cell's or container's arrangement, plus its resolved classes for readers. */
+function exportArrangement(props: Node["props"], config: CellConfig) {
+  props.arrangement = config as Json
+  props.className = arrangement(config).className
+}
+
 function exportItem(item: Item, nextId: () => string): Node {
   const id = nextId()
   if (isLayout(item)) {
@@ -141,11 +151,15 @@ function exportItem(item: Item, nextId: () => string): Node {
       return { id, component: FLEX, props }
     }
     props.columns = item.columns
-    props.children = item.cells.map((cell) => ({
-      id: nextId(),
-      component: COLUMN,
-      props: { children: cell.map((c) => exportItem(c, nextId)) },
-    }))
+    props.rows = layoutRows(item)
+    props.children = item.cells.map((cell, i) => {
+      const cellId = nextId()
+      const cellProps: Node["props"] = {}
+      const config = item.cellConfigs?.[i]
+      if (config) exportArrangement(cellProps, config)
+      cellProps.children = cell.map((c) => exportItem(c, nextId))
+      return { id: cellId, component: CELL, props: cellProps }
+    })
     return { id, component: GRID, props }
   }
 
@@ -162,6 +176,7 @@ function exportItem(item: Item, nextId: () => string): Node {
   const classes = styleClasses(item.style)
   if (classes) props.className = classes
   if (item.style) props.style = item.style as Json
+  if (item.childrenConfig) props.arrangement = item.childrenConfig as Json
   if (item.children?.length) props.children = item.children.map((c) => exportItem(c, nextId))
   return { id, component: componentName(item.type), props }
 }
@@ -207,16 +222,21 @@ class DesignError extends Error {}
 const isObject = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v)
 
-function sanitizeStyle(raw: unknown, path: string, warnings: string[]): ItemStyle | undefined {
+function sanitizeStyle(
+  raw: unknown,
+  path: string,
+  warnings: string[],
+  key = "props.style"
+): ItemStyle | undefined {
   if (raw === undefined) return undefined
-  if (!isObject(raw)) throw new DesignError(`${path}.props.style must be an object`)
+  if (!isObject(raw)) throw new DesignError(`${path}.${key} must be an object`)
   const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(raw)) {
-    const allowed = (STYLE_OPTIONS as Record<string, readonly string[]>)[key]
-    if (!allowed) warnings.push(`${path}.props.style.${key}: unknown property ignored`)
+  for (const [prop, value] of Object.entries(raw)) {
+    const allowed = (STYLE_OPTIONS as Record<string, readonly string[]>)[prop]
+    if (!allowed) warnings.push(`${path}.${key}.${prop}: unknown property ignored`)
     else if (typeof value !== "string" || !allowed.includes(value)) {
-      warnings.push(`${path}.props.style.${key}: "${String(value)}" is not an option, ignored`)
-    } else out[key] = value
+      warnings.push(`${path}.${key}.${prop}: "${String(value)}" is not an option, ignored`)
+    } else out[prop] = value
   }
   return Object.keys(out).length ? (out as ItemStyle) : undefined
 }
@@ -235,6 +255,29 @@ function readChildren(props: Record<string, unknown>, path: string): unknown[] {
   return props.children
 }
 
+function parseArrangement(raw: unknown, path: string, warnings: string[]): CellConfig | undefined {
+  if (raw === undefined) return undefined
+  if (!isObject(raw)) throw new DesignError(`${path}.props.arrangement must be an object`)
+  const out: CellConfig = {}
+  if (raw.kind !== undefined) {
+    if (raw.kind !== "flex" && raw.kind !== "grid") throw new DesignError(`${path}.props.arrangement.kind must be "flex" or "grid"`)
+    out.kind = raw.kind
+  }
+  if (raw.columns !== undefined) {
+    if (typeof raw.columns !== "number" || !Number.isInteger(raw.columns) || raw.columns < 1 || raw.columns > 12) {
+      throw new DesignError(`${path}.props.arrangement.columns must be an integer from 1 to 12`)
+    }
+    out.columns = raw.columns
+  }
+  if (raw.gap !== undefined) {
+    if (typeof raw.gap === "string" && raw.gap in GAP) out.gap = raw.gap as CellConfig["gap"]
+    else warnings.push(`${path}.props.arrangement.gap: "${String(raw.gap)}" is not an option, ignored`)
+  }
+  const style = sanitizeStyle(raw.style, path, warnings, "props.arrangement.style")
+  if (style) out.style = style
+  return Object.keys(out).length ? out : undefined
+}
+
 function parseItem(raw: unknown, path: string, nextId: () => number, warnings: string[]): Item {
   const { component, props } = readNode(raw, path)
 
@@ -251,23 +294,41 @@ function parseItem(raw: unknown, path: string, nextId: () => number, warnings: s
     if (typeof columns !== "number" || !Number.isInteger(columns) || columns < 1 || columns > 12) {
       throw new DesignError(`${path}.props.columns must be an integer from 1 to 12`)
     }
-    if (children.length !== columns) {
-      throw new DesignError(`${path}.props.children has ${children.length} ${COLUMN} nodes but columns is ${columns}`)
+    const rows = props.rows === undefined ? 1 : props.rows
+    if (typeof rows !== "number" || !Number.isInteger(rows) || rows < 1 || rows > 12) {
+      throw new DesignError(`${path}.props.rows must be an integer from 1 to 12`)
     }
+    if (children.length !== columns * rows) {
+      throw new DesignError(
+        `${path}.props.children has ${children.length} ${CELL} nodes but columns x rows is ${columns * rows}`
+      )
+    }
+    const configs: (CellConfig | null)[] = []
     const cells = children.map((col, i) => {
       const colPath = `${path}.props.children[${i}]`
       const node = readNode(col, colPath)
-      if (node.component !== COLUMN) {
-        throw new DesignError(`${colPath}.component must be "${COLUMN}" (children of a ${GRID})`)
+      if (node.component !== CELL && node.component !== LEGACY_CELL) {
+        throw new DesignError(`${colPath}.component must be "${CELL}" (children of a ${GRID})`)
       }
+      configs.push(parseArrangement(node.props.arrangement, colPath, warnings) ?? null)
       return readChildren(node.props, colPath).map((c, j) =>
         parseItem(c, `${colPath}.props.children[${j}]`, nextId, warnings)
       )
     })
-    return { id, columns, gap, cells, ...(style && { style }) }
+    return {
+      id,
+      columns,
+      ...(rows > 1 && { rows }),
+      gap,
+      cells,
+      ...(configs.some(Boolean) && { cellConfigs: configs }),
+      ...(style && { style }),
+    }
   }
 
-  if (component === COLUMN) throw new DesignError(`${path}: ${COLUMN} is only valid directly inside a ${GRID}`)
+  if (component === CELL || component === LEGACY_CELL) {
+    throw new DesignError(`${path}: ${CELL} is only valid directly inside a ${GRID}`)
+  }
   const type = TYPE_BY_COMPONENT.get(component)
   const entry = type ? CATALOG_BY_TYPE.get(type) : undefined
   if (!type || !entry) throw new DesignError(`${path}.component "${component}" is not a known component`)
@@ -284,11 +345,13 @@ function parseItem(raw: unknown, path: string, nextId: () => number, warnings: s
   if (children.length) {
     out.children = children.map((c, i) => parseItem(c, `${path}.props.children[${i}]`, nextId, warnings))
   }
+  const childrenConfig = parseArrangement(props.arrangement, path, warnings)
+  if (childrenConfig) out.childrenConfig = childrenConfig
   // Remaining props are the component's data; only keys its editors know about are kept.
   const dataKeys = new Set(entry.fields?.map((f) => f.key))
   const data: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(props)) {
-    if (["text", "style", "children", "className"].includes(key)) continue
+    if (["text", "style", "children", "className", "arrangement"].includes(key)) continue
     if (dataKeys.has(key)) data[key] = value
     else warnings.push(`${path}.props.${key}: not a property of ${component}, ignored`)
   }

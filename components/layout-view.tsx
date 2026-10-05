@@ -1,5 +1,6 @@
 "use client"
 
+import { arrangement } from "@/lib/arrange"
 import { CATALOG_BY_TYPE } from "@/lib/catalog"
 import { useGlobals } from "@/lib/globals-store"
 import { GAP, gapClass, normalizeGap, styleClasses } from "@/lib/tailwind"
@@ -48,22 +49,27 @@ function ComponentBlock({
 
   let children: React.ReactNode
   if (entry?.container) {
+    const arranged = arrangement(component.childrenConfig)
     if (editing) {
       children = (
         <div
           data-zone="slot"
           data-id={component.id}
           data-empty={items.length === 0 ? "true" : undefined}
-          className="flex min-h-10 w-full min-w-0 flex-col items-start gap-3 rounded-md border border-dashed border-neutral-300 p-2"
+          style={arranged.style}
+          className={cn(
+            "min-h-10 w-full rounded-md border border-dashed border-neutral-300 p-2",
+            arranged.className
+          )}
         >
           {items.length === 0 && <EmptyPrompt />}
-          <ItemList items={items} editing={editing} />
+          <ItemList items={items} inFlex={arranged.inFlex} editing={editing} />
         </div>
       )
     } else {
       children = items.length ? (
-        <div className="flex w-full min-w-0 flex-col items-start gap-3">
-          <ItemList items={items} />
+        <div style={arranged.style} className={cn("w-full", arranged.className)}>
+          <ItemList items={items} inFlex={arranged.inFlex} />
         </div>
       ) : null
     }
@@ -118,22 +124,26 @@ function LayoutBlock({
       )}
       style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))` }}
     >
-      {layout.cells.map((items, i) => (
-        <div
-          key={i}
-          data-zone={editing ? "cell" : undefined}
-          data-id={layout.id}
-          data-cell={i}
-          data-empty={editing && items.length === 0 ? "true" : undefined}
-          className={cn(
-            "flex min-w-0 flex-col items-start gap-3",
-            editing && "min-h-24 rounded-md border border-dashed border-sky-700 p-2"
-          )}
-        >
-          {editing && items.length === 0 && <EmptyPrompt />}
-          <ItemList items={items} editing={editing} />
-        </div>
-      ))}
+      {layout.cells.map((items, i) => {
+        const arranged = arrangement(layout.cellConfigs?.[i] ?? undefined)
+        return (
+          <div
+            key={i}
+            data-zone={editing ? "cell" : undefined}
+            data-id={layout.id}
+            data-cell={i}
+            data-empty={editing && items.length === 0 ? "true" : undefined}
+            style={arranged.style}
+            className={cn(
+              arranged.className,
+              editing && "min-h-24 rounded-md border border-dashed border-sky-700 p-2"
+            )}
+          >
+            {editing && items.length === 0 && <EmptyPrompt />}
+            <ItemList items={items} inFlex={arranged.inFlex} editing={editing} />
+          </div>
+        )
+      })}
     </div>
   )
 }

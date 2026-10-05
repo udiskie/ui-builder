@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVerticalIcon, PlusIcon } from "lucide-react"
+import { GripVerticalIcon, LayoutGridIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
 
 import { CATALOG_BY_TYPE } from "@/lib/catalog"
@@ -30,6 +30,12 @@ import { isLayout, type Item } from "@/lib/layout-store"
 import { cn } from "@/lib/utils"
 
 const cellId = (i: number) => `cell-${i}`
+
+/** "Column 2" in a one-row grid, "Row 1 · Column 2" otherwise. */
+function cellTitle(i: number, columns: number, rows: number) {
+  const column = (i % columns) + 1
+  return rows > 1 ? `Row ${Math.floor(i / columns) + 1} · Column ${column}` : `Column ${column}`
+}
 
 export function describeItem(item: Item) {
   if (isLayout(item)) {
@@ -79,16 +85,28 @@ function Column({
   title,
   items,
   onAdd,
+  onArrange,
 }: {
   id: string
   title?: string
   items: Item[]
   onAdd: () => void
+  onArrange: () => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      {title && <h4 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">{title}</h4>}
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">{title}</h4>
+        <button
+          type="button"
+          onClick={onArrange}
+          className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-sky-700 outline-none hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-700"
+        >
+          <LayoutGridIcon className="size-3.5" />
+          Arrange
+        </button>
+      </div>
       <SortableContext id={id} items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
@@ -131,13 +149,21 @@ function Column({
  */
 export function LayoutItemsSorter({
   cells,
+  columns,
+  rows,
   flex,
   onChange,
   onAdd,
+  onArrange,
 }: {
   cells: Item[][]
+  /** Grid columns and rows (1 and 1 for a flex layout). */
+  columns: number
+  rows: number
   flex: boolean
   onChange: (cells: Item[][]) => void
+  /** Arrange (flex, grid, stack) the contents of the given cell. */
+  onArrange: (cell: number) => void
   /** Add an item to the given column (the dialog is covering the canvas, so it is offered here). */
   onAdd: (cell: number) => void
 }) {
@@ -210,10 +236,17 @@ export function LayoutItemsSorter({
       >
         <div
           className="grid gap-3"
-          style={{ gridTemplateColumns: `repeat(${flex ? 1 : Math.max(1, cells.length)}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, columns)}, minmax(0, 1fr))` }}
         >
           {cells.map((items, i) => (
-            <Column key={i} id={cellId(i)} title={flex ? undefined : `Column ${i + 1}`} items={items} onAdd={() => onAdd(i)} />
+            <Column
+              key={i}
+              id={cellId(i)}
+              title={flex ? "Items" : cellTitle(i, columns, rows)}
+              items={items}
+              onAdd={() => onAdd(i)}
+              onArrange={() => onArrange(i)}
+            />
           ))}
         </div>
         <DragOverlay>{active ? <Chip item={active} dragging /> : null}</DragOverlay>

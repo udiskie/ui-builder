@@ -1,6 +1,7 @@
 "use client"
 
 import { createLocalStore } from "@/lib/local-store"
+import type { CellConfig } from "@/lib/arrange"
 import type { GapKey, ItemStyle } from "@/lib/tailwind"
 
 export type ComponentType = string
@@ -14,18 +15,24 @@ export type UIComponent = {
   data?: Record<string, unknown>
   /** Only used by container components (see `container` in the catalog). */
   children?: Item[]
+  /** How the children are arranged (stack by default). */
+  childrenConfig?: CellConfig
 }
 
 export type LayoutKind = "grid" | "flex"
 
 export type Layout = {
   id: number
-  /** "grid" (default) has `columns` fixed columns; "flex" has one cell holding any number of children. */
+  /** "grid" (default) has `columns` x `rows` cells; "flex" has one cell holding any number of children. */
   kind?: LayoutKind
   columns: number
+  /** Grid rows; absent means 1 (layouts saved before rows existed). Cells are row-major. */
+  rows?: number
   /** Tailwind gap key; older saved layouts hold a px number (see `normalizeGap`). */
   gap: GapKey | number
   cells: Item[][]
+  /** Arrangement of each cell's contents, aligned with `cells`; null means the default stack. */
+  cellConfigs?: (CellConfig | null)[]
   style?: ItemStyle
 }
 
@@ -35,15 +42,23 @@ export function isLayout(item: Item): item is Layout {
   return "columns" in item
 }
 
-export function createLayout(columns: number, gap: GapKey, kind: LayoutKind = "grid"): Layout {
+export const layoutRows = (layout: Layout) => layout.rows ?? 1
+
+export function createLayout(
+  columns: number,
+  gap: GapKey,
+  kind: LayoutKind = "grid",
+  rows = 1
+): Layout {
   if (kind === "flex") {
     return { id: Date.now(), kind, columns: 1, gap, cells: [[]] }
   }
   return {
     id: Date.now(),
     columns,
+    ...(rows > 1 && { rows }),
     gap,
-    cells: Array.from({ length: columns }, () => []),
+    cells: Array.from({ length: columns * rows }, () => []),
   }
 }
 
@@ -109,34 +124,69 @@ export function removeItem(layouts: Layout[], id: number): Layout[] {
   return transform(layouts, id, () => null) as Layout[]
 }
 
-/** Changes column count and gap; content of dropped columns merges into the last kept one. */
-export function resizeLayout(layout: Layout, columns: number, gap: GapKey): Layout {
-  const cells =
-    columns < layout.cells.length
-      ? [
-          ...layout.cells.slice(0, columns - 1),
-          layout.cells.slice(columns - 1).flat(),
-        ]
-      : [
-          ...layout.cells,
-          ...Array.from({ length: columns - layout.cells.length }, () => [] as Item[]),
-        ]
-  return { ...layout, columns, gap, cells }
+/**
+ * Resizes a grid to `columns` x `rows`. Cells keep their row/column; items of cells that no
+ * longer exist merge into the last cell.
+ */
+function resizeGrid(layout: Layout, columns: number, rows: number) {
+  const oldColumns = layout.columns
+  const count = columns * rows
+  const cells: Item[][] = Array.from({ length: count }, () => [])
+  const configs: (CellConfig | null)[] = Array.from({ length: count }, () => null)
+  const overflow: Item[] = []
+  layout.cells.forEach((items, i) => {
+    const r = Math.floor(i / oldColumns)
+    const c = i % oldColumns
+    if (r < rows && c < columns) {
+      cells[r * columns + c] = items
+      configs[r * columns + c] = layout.cellConfigs?.[i] ?? null
+    } else overflow.push(...items)
+  })
+  cells[count - 1] = [...cells[count - 1], ...overflow]
+  return { columns, rows, cells, cellConfigs: configs.some(Boolean) ? configs : undefined }
 }
 
-/** Applies the edit form to a layout, converting between grid and flex without losing children. */
-export function reshapeLayout(layout: Layout, kind: LayoutKind, columns: number, gap: GapKey): Layout {
+/**
+ * Applies the edit form to a layout, converting between grid and flex without losing items.
+ * `layout.columns`/`rows`/`cells` must describe the same grid.
+ */
+export function reshapeLayout(
+  layout: Layout,
+  kind: LayoutKind,
+  columns: number,
+  gap: GapKey,
+  rows = 1
+): Layout {
   const current: LayoutKind = layout.kind ?? "grid"
   if (kind === current) {
-    return kind === "flex" ? { ...layout, gap } : resizeLayout(layout, columns, gap)
+    return kind === "flex" ? { ...layout, gap } : { ...layout, gap, ...resizeGrid(layout, columns, rows) }
   }
   const all = layout.cells.flat()
-  if (kind === "flex") return { ...layout, kind, columns: 1, gap, cells: [all] }
+  if (kind === "flex") {
+    return { ...layout, kind, columns: 1, rows: undefined, gap, cells: [all], cellConfigs: undefined }
+  }
   return {
     ...layout,
     kind: "grid",
     columns,
+    rows,
     gap,
-    cells: [all, ...Array.from({ length: columns - 1 }, () => [] as Item[])],
+    cells: [all, ...Array.from({ length: columns * rows - 1 }, () => [] as Item[])],
+    cellConfigs: undefined,
   }
+}
+
+/** Sets (or clears, with undefined) how one grid cell arranges its contents. */
+export function setCellConfig(layouts: Layout[], layoutId: number, cell: number, config?: CellConfig): Layout[] {
+  return updateItem(layouts, layoutId, (it) => {
+    const layout = it as Layout
+    const configs = Array.from({ length: layout.cells.length }, (_, i) => layout.cellConfigs?.[i] ?? null)
+    configs[cell] = config ?? null
+    return { ...layout, cellConfigs: configs.some(Boolean) ? configs : undefined }
+  })
+}
+
+/** Sets (or clears) how a container component arranges its children. */
+export function setChildrenConfig(layouts: Layout[], componentId: number, config?: CellConfig): Layout[] {
+  return updateItem(layouts, componentId, (it) => ({ ...(it as UIComponent), childrenConfig: config }))
 }

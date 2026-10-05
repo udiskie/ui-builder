@@ -23,6 +23,7 @@ import {
   createLayout,
   findItem,
   isLayout,
+  layoutRows,
   removeItem,
   reshapeLayout,
   saveLayouts,
@@ -34,23 +35,26 @@ import {
 } from "@/lib/layout-store"
 import type { ComponentData } from "@/lib/catalog-types"
 import { submitOnEnter, useEnterOutsideDialog } from "@/lib/dialog-keys"
+import { cleanStyle, type CellConfig } from "@/lib/arrange"
 import { normalizeGap, type GapKey, type ItemStyle } from "@/lib/tailwind"
 import { cn } from "@/lib/utils"
 
-export type DialogState =
+/** Adding to, or editing, a component or layout. */
+export type ItemDialogState =
   | { mode: "create"; layoutId: number; cell: number }
   | { mode: "edit"; item: Item }
+
+/** Arranging the contents of one grid cell, or of a container component's children. */
+export type ArrangeState =
+  | { mode: "cell"; layoutId: number; cell: number }
+  | { mode: "children"; componentId: number }
+
+export type DialogState = ItemDialogState | ArrangeState
 
 type PickerEntry = Omit<CatalogEntry, "render"> & Partial<Pick<CatalogEntry, "render">>
 
 const LAYOUT_ENTRY: PickerEntry = { type: "layout", label: "Layout", field: "", initial: "" }
 const PICKER_ENTRIES: PickerEntry[] = [LAYOUT_ENTRY, ...CATALOG]
-
-/** Drops unset keys so saved items only carry the styles that were actually chosen. */
-function cleanStyle(style: ItemStyle): ItemStyle | undefined {
-  const entries = Object.entries(style).filter(([, v]) => v)
-  return entries.length ? (Object.fromEntries(entries) as ItemStyle) : undefined
-}
 
 /** Mount to open; unmount (via onClose) to dismiss, so form state is fresh on every open. */
 export function ItemDialog({
@@ -59,7 +63,7 @@ export function ItemDialog({
   onClose,
   onNavigate,
 }: {
-  dialog: DialogState
+  dialog: ItemDialogState
   layouts: Layout[]
   onClose: () => void
   /** Switches to another dialog (e.g. editing or adding a child); the parent remounts this one. */
@@ -73,8 +77,10 @@ export function ItemDialog({
   const [text, setText] = useState(editingComponent?.text ?? CATALOG[0].initial)
   const [layoutKind, setLayoutKind] = useState<LayoutKind>(editingLayout?.kind ?? "grid")
   const [columns, setColumns] = useState(editingLayout?.columns ?? 2)
+  const [rows, setRows] = useState(editingLayout ? layoutRows(editingLayout) : 1)
   // Working copy of the layout's items; the Items tab edits it and Save writes it back.
   const [cells, setCells] = useState<Item[][]>(editingLayout?.cells ?? [])
+  const [cellConfigs, setCellConfigs] = useState<(CellConfig | null)[] | undefined>(editingLayout?.cellConfigs)
   const [gap, setGap] = useState<GapKey>(normalizeGap(editingLayout?.gap))
   const [style, setStyle] = useState<ItemStyle>(editing?.style ?? {})
   const [data, setData] = useState<ComponentData>(() => ({
@@ -118,12 +124,21 @@ export function ItemDialog({
     setStyle((s) => ({ ...s, [key]: value }))
   }
 
-  /** Type/column changes reshape the working items immediately so the Items tab stays accurate. */
-  function reshapeEditing(kind: LayoutKind, cols: number) {
+  /** Type/size changes reshape the working items immediately so the Items tab stays accurate. */
+  function reshapeEditing(kind: LayoutKind, cols: number, rowCount: number) {
     if (!editingLayout) return
+    const next = reshapeLayout(
+      { ...editingLayout, kind, columns, rows, cells, cellConfigs },
+      kind,
+      cols,
+      gap,
+      rowCount
+    )
     setLayoutKind(kind)
-    setColumns(cols)
-    setCells(reshapeLayout({ ...editingLayout, kind, cells }, kind, cols, gap).cells)
+    setColumns(next.columns)
+    setRows(layoutRows(next))
+    setCells(next.cells)
+    setCellConfigs(next.cellConfigs)
   }
 
   /** Writes the edit form to the store (edit mode only). */
@@ -133,9 +148,11 @@ export function ItemDialog({
         updateItem(layouts, editingLayout.id, (it) => ({
           ...(it as Layout),
           kind: layoutKind === "flex" ? "flex" : undefined,
-          columns: cells.length,
+          columns: layoutKind === "flex" ? 1 : columns,
+          rows: layoutKind === "grid" && rows > 1 ? rows : undefined,
           gap,
           cells,
+          cellConfigs,
           style: cleanStyle(style),
         }))
       )
@@ -155,7 +172,7 @@ export function ItemDialog({
     e.preventDefault()
     if (dialog.mode === "create") {
       const item =
-        type === "layout" ? createLayout(columns, gap, layoutKind) : { id: Date.now(), type, text }
+        type === "layout" ? createLayout(columns, gap, layoutKind, rows) : { id: Date.now(), type, text }
       saveLayouts(addToCell(layouts, dialog.layoutId, dialog.cell, item))
     } else {
       saveEdits()
@@ -288,8 +305,10 @@ export function ItemDialog({
                     kind={layoutKind}
                     onKind={setLayoutKind}
                     columns={columns}
+                    rows={rows}
                     gap={gap}
                     onColumns={setColumns}
+                    onRows={setRows}
                     onGap={setGap}
                   />
                 </div>
@@ -322,8 +341,14 @@ export function ItemDialog({
               <TabsContent value="items" className="min-h-0 flex-1 overflow-y-auto p-1">
                 <LayoutItemsSorter
                   cells={cells}
+                  columns={layoutKind === "flex" ? 1 : columns}
+                  rows={layoutKind === "flex" ? 1 : rows}
                   flex={layoutKind === "flex"}
                   onChange={setCells}
+                  onArrange={(cell) => {
+                    saveEdits()
+                    onNavigate({ mode: "cell", layoutId: editingLayout.id, cell })
+                  }}
                   onAdd={(cell) => {
                     saveEdits()
                     onNavigate({ mode: "create", layoutId: editingLayout.id, cell })
@@ -335,14 +360,16 @@ export function ItemDialog({
                   <LayoutFields
                     idPrefix="edit"
                     kind={layoutKind}
-                    onKind={(k) => reshapeEditing(k, columns)}
+                    onKind={(k) => reshapeEditing(k, columns, rows)}
                     columns={columns}
+                    rows={rows}
                     gap={gap}
-                    onColumns={(c) => reshapeEditing(layoutKind, c)}
+                    onColumns={(c) => reshapeEditing(layoutKind, c, rows)}
+                    onRows={(r) => reshapeEditing(layoutKind, columns, r)}
                     onGap={setGap}
                   />
                   <p className="text-sm text-neutral-500">
-                    Removed columns merge their content into the last one. Switching type keeps all items.
+                    Items of removed cells merge into the last cell. Switching type keeps all items.
                   </p>
                 </div>
               </TabsContent>

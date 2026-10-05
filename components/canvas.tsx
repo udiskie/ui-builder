@@ -1,10 +1,11 @@
 "use client"
 
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { LayoutGridIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 
+import { ArrangeDialog } from "@/components/arrange-dialog"
 import { ContextPanel, type PanelItem } from "@/components/context-panel"
-import { ItemDialog, type DialogState } from "@/components/item-dialog"
+import { ItemDialog, type ArrangeState, type DialogState } from "@/components/item-dialog"
 import { LayoutView } from "@/components/layout-view"
 import { PageShell } from "@/components/page-shell"
 import { PreviewButton } from "@/components/preview-button"
@@ -22,13 +23,16 @@ import {
   createLayout,
   findItem,
   isLayout,
+  layoutRows,
   removeItem,
   saveLayouts,
+  setCellConfig,
+  setChildrenConfig,
   useLayouts,
 } from "@/lib/layout-store"
 import { submitOnEnter, useEnterOutsideDialog } from "@/lib/dialog-keys"
 import { CATALOG_BY_TYPE } from "@/lib/catalog"
-import type { LayoutKind } from "@/lib/layout-store"
+import type { Layout, LayoutKind, UIComponent } from "@/lib/layout-store"
 import type { GapKey } from "@/lib/tailwind"
 
 export function Canvas() {
@@ -37,6 +41,7 @@ export function Canvas() {
   const [layoutOpen, setLayoutOpen] = useState(false)
   const [kind, setKind] = useState<LayoutKind>("grid")
   const [columns, setColumns] = useState(2)
+  const [rows, setRows] = useState(1)
   const [gap, setGap] = useState<GapKey>("4")
 
   const layoutForm = useRef<HTMLFormElement>(null)
@@ -124,6 +129,12 @@ export function Canvas() {
       onSelect: () => saveLayouts(removeItem(layouts, id)),
     })
 
+    const arrange = (target: ArrangeState, label: string): PanelItem => ({
+      label,
+      icon: <LayoutGridIcon />,
+      onSelect: () => setDialog(target),
+    })
+
     if (!zone) {
       setMenu({
         x,
@@ -135,6 +146,7 @@ export function Canvas() {
             onSelect: () => {
               setKind("grid")
               setColumns(2)
+              setRows(1)
               setGap("4")
               setLayoutOpen(true)
             },
@@ -162,15 +174,33 @@ export function Canvas() {
         })
         break
       case "slot": // children area of a container component
-        setMenu({ x, y, items: [add(id, 0), edit(id, "component"), remove(id, "component")] })
-        break
-      case "cell": {
-        const cell = Number(zone.dataset.cell)
         setMenu({
           x,
           y,
-          title: `Column ${cell + 1}`,
-          items: [add(id, cell), edit(id, "layout"), remove(id, "layout")],
+          items: [
+            add(id, 0),
+            arrange({ mode: "children", componentId: id }, "Arrange children"),
+            edit(id, "component"),
+            remove(id, "component"),
+          ],
+        })
+        break
+      case "cell": {
+        const cell = Number(zone.dataset.cell)
+        const layout = item && isLayout(item) ? item : undefined
+        const columnsCount = layout?.columns ?? 1
+        const rowsCount = layout ? layoutRows(layout) : 1
+        const column = (cell % columnsCount) + 1
+        setMenu({
+          x,
+          y,
+          title: rowsCount > 1 ? `Row ${Math.floor(cell / columnsCount) + 1} · Column ${column}` : `Column ${column}`,
+          items: [
+            add(id, cell),
+            arrange({ mode: "cell", layoutId: id, cell }, "Arrange cell"),
+            edit(id, "layout"),
+            remove(id, "layout"),
+          ],
         })
         break
       }
@@ -187,7 +217,7 @@ export function Canvas() {
 
   function addLayout(e: React.FormEvent) {
     e.preventDefault()
-    saveLayouts([...layouts, createLayout(columns, gap, kind)])
+    saveLayouts([...layouts, createLayout(columns, gap, kind, rows)])
     setLayoutOpen(false)
   }
 
@@ -223,7 +253,7 @@ export function Canvas() {
             <DialogHeader>
               <DialogTitle>New layout</DialogTitle>
               <DialogDescription>
-                Choose a grid with fixed columns, or a flex layout that takes any number of children.
+                Choose a grid with rows and columns, or a flex layout that takes any number of children.
               </DialogDescription>
             </DialogHeader>
             <LayoutFields
@@ -231,8 +261,10 @@ export function Canvas() {
               kind={kind}
               onKind={setKind}
               columns={columns}
+              rows={rows}
               gap={gap}
               onColumns={setColumns}
+              onRows={setRows}
               onGap={setGap}
             />
             <DialogFooter>
@@ -245,7 +277,7 @@ export function Canvas() {
         </DialogContent>
       </Dialog>
 
-      {dialog && (
+      {dialog && (dialog.mode === "create" || dialog.mode === "edit") && (
         <ItemDialog
           key={
             dialog.mode === "edit"
@@ -256,6 +288,28 @@ export function Canvas() {
           layouts={layouts}
           onClose={() => setDialog(null)}
           onNavigate={setDialog}
+        />
+      )}
+
+      {dialog?.mode === "cell" && (
+        <ArrangeDialog
+          key={`cell-${dialog.layoutId}-${dialog.cell}`}
+          title="Arrange cell"
+          description="How the items in this cell are laid out."
+          initial={(findItem(layouts, dialog.layoutId) as Layout | undefined)?.cellConfigs?.[dialog.cell] ?? undefined}
+          onSave={(config) => saveLayouts(setCellConfig(layouts, dialog.layoutId, dialog.cell, config))}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.mode === "children" && (
+        <ArrangeDialog
+          key={`children-${dialog.componentId}`}
+          title="Arrange children"
+          description="How the items inside this component are laid out."
+          initial={(findItem(layouts, dialog.componentId) as UIComponent | undefined)?.childrenConfig}
+          onSave={(config) => saveLayouts(setChildrenConfig(layouts, dialog.componentId, config))}
+          onClose={() => setDialog(null)}
         />
       )}
     </PageShell>

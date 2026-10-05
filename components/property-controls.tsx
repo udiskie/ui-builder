@@ -133,17 +133,21 @@ export function LayoutFields({
   idPrefix,
   kind,
   columns,
+  rows,
   gap,
   onKind,
   onColumns,
+  onRows,
   onGap,
 }: {
   idPrefix: string
   kind: LayoutKind
   columns: number
+  rows: number
   gap: GapKey
   onKind: (kind: LayoutKind) => void
   onColumns: (n: number) => void
+  onRows: (n: number) => void
   onGap: (gap: GapKey) => void
 }) {
   return (
@@ -169,17 +173,30 @@ export function LayoutFields({
         />
       </div>
       {kind === "grid" && (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`${idPrefix}-columns`}>Columns</Label>
-          <Input
-            id={`${idPrefix}-columns`}
-            type="number"
-            min={1}
-            max={12}
-            value={columns}
-            onChange={(e) => onColumns(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
-          />
-        </div>
+        <>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${idPrefix}-columns`}>Columns</Label>
+            <Input
+              id={`${idPrefix}-columns`}
+              type="number"
+              min={1}
+              max={12}
+              value={columns}
+              onChange={(e) => onColumns(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`${idPrefix}-rows`}>Rows</Label>
+            <Input
+              id={`${idPrefix}-rows`}
+              type="number"
+              min={1}
+              max={12}
+              value={rows}
+              onChange={(e) => onRows(Math.min(12, Math.max(1, Number(e.target.value) || 1)))}
+            />
+          </div>
+        </>
       )}
     </div>
   )
