@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVerticalIcon } from "lucide-react"
+import { GripVerticalIcon, PlusIcon } from "lucide-react"
 import { useState } from "react"
 
 import { CATALOG_BY_TYPE } from "@/lib/catalog"
@@ -74,7 +74,17 @@ function SortableChip({ item }: { item: Item }) {
   )
 }
 
-function Column({ id, title, items }: { id: string; title?: string; items: Item[] }) {
+function Column({
+  id,
+  title,
+  items,
+  onAdd,
+}: {
+  id: string
+  title?: string
+  items: Item[]
+  onAdd: () => void
+}) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -83,15 +93,31 @@ function Column({ id, title, items }: { id: string; title?: string; items: Item[
         <div
           ref={setNodeRef}
           className={cn(
-            "flex min-h-24 flex-col gap-2 rounded-lg border border-dashed border-neutral-300 p-2 transition-colors",
-            isOver && "border-neutral-900 bg-neutral-50"
+            "flex min-h-24 flex-col gap-2 rounded-lg border border-dashed border-sky-700 p-2 transition-colors",
+            isOver && "bg-sky-50"
           )}
         >
           {items.map((item) => (
             <SortableChip key={item.id} item={item} />
           ))}
-          {items.length === 0 && (
-            <p className="m-auto text-xs text-neutral-400 select-none">Drop items here</p>
+          {items.length === 0 ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="m-auto flex min-h-16 w-full flex-1 items-center justify-center gap-1.5 rounded-md text-sm text-sky-700 outline-none hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-700"
+            >
+              <PlusIcon className="size-4" />
+              Click here to add items
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="flex items-center gap-1 self-start rounded-md px-1.5 py-1 text-xs text-sky-700 outline-none hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-700"
+            >
+              <PlusIcon className="size-3.5" />
+              Add item
+            </button>
           )}
         </div>
       </SortableContext>
@@ -107,10 +133,13 @@ export function LayoutItemsSorter({
   cells,
   flex,
   onChange,
+  onAdd,
 }: {
   cells: Item[][]
   flex: boolean
   onChange: (cells: Item[][]) => void
+  /** Add an item to the given column (the dialog is covering the canvas, so it is offered here). */
+  onAdd: (cell: number) => void
 }) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const sensors = useSensors(
@@ -166,7 +195,7 @@ export function LayoutItemsSorter({
     <div className="flex flex-col gap-3">
       <p className="text-sm text-neutral-500">
         {empty
-          ? "This layout has no items yet. Add some on the canvas with a right-click, then reorder them here."
+          ? "This layout has no items yet. Click a column below to add some, then reorder them here."
           : flex
             ? "Drag items to change their order."
             : "Drag items to reorder them, or into another column. Press space on a handle to move with the keyboard."}
@@ -184,7 +213,7 @@ export function LayoutItemsSorter({
           style={{ gridTemplateColumns: `repeat(${flex ? 1 : Math.max(1, cells.length)}, minmax(0, 1fr))` }}
         >
           {cells.map((items, i) => (
-            <Column key={i} id={cellId(i)} title={flex ? undefined : `Column ${i + 1}`} items={items} />
+            <Column key={i} id={cellId(i)} title={flex ? undefined : `Column ${i + 1}`} items={items} onAdd={() => onAdd(i)} />
           ))}
         </div>
         <DragOverlay>{active ? <Chip item={active} dragging /> : null}</DragOverlay>

@@ -13,7 +13,17 @@ import { isLayout, type Item, type Layout, type UIComponent } from "@/lib/layout
  *   data-zone="layout"     data-id           -> a layout (a flex layout's whole area)
  *   data-zone="cell"       data-id data-cell -> one column of a grid layout
  *   data-zone="slot"       data-id           -> the children area of a container component
+ * Empty cells, flex layouts and slots also carry data-empty: a plain click on them adds an item.
  */
+
+/** Shown in empty drop zones while editing. */
+function EmptyPrompt() {
+  return (
+    <span className="pointer-events-none m-auto text-xs text-sky-700 select-none">
+      Click here to add items
+    </span>
+  )
+}
 
 type ViewProps = { editing?: boolean }
 
@@ -43,13 +53,10 @@ function ComponentBlock({
         <div
           data-zone="slot"
           data-id={component.id}
+          data-empty={items.length === 0 ? "true" : undefined}
           className="flex min-h-10 w-full min-w-0 flex-col items-start gap-3 rounded-md border border-dashed border-neutral-300 p-2"
         >
-          {items.length === 0 && (
-            <span className="pointer-events-none text-xs text-neutral-400 select-none">
-              right-click to add children
-            </span>
-          )}
+          {items.length === 0 && <EmptyPrompt />}
           <ItemList items={items} editing={editing} />
         </div>
       )
@@ -84,14 +91,16 @@ function LayoutBlock({
       <div
         data-zone={editing ? "layout" : undefined}
         data-id={layout.id}
+        data-empty={editing && !layout.cells[0]?.length ? "true" : undefined}
         className={cn(
           "relative flex min-w-0",
           !inFlex && "w-full",
           GAP[normalizeGap(layout.gap)],
-          editing && "min-h-24 rounded-md border border-dashed border-neutral-300 p-2",
+          editing && "min-h-24 rounded-md border border-dashed border-sky-700 p-2",
           styleClasses(layout.style)
         )}
       >
+        {editing && !layout.cells[0]?.length && <EmptyPrompt />}
         <ItemList items={layout.cells[0] ?? []} inFlex editing={editing} />
       </div>
     )
@@ -115,11 +124,13 @@ function LayoutBlock({
           data-zone={editing ? "cell" : undefined}
           data-id={layout.id}
           data-cell={i}
+          data-empty={editing && items.length === 0 ? "true" : undefined}
           className={cn(
             "flex min-w-0 flex-col items-start gap-3",
-            editing && "min-h-24 rounded-md border border-dashed border-neutral-300 p-2"
+            editing && "min-h-24 rounded-md border border-dashed border-sky-700 p-2"
           )}
         >
+          {editing && items.length === 0 && <EmptyPrompt />}
           <ItemList items={items} editing={editing} />
         </div>
       ))}

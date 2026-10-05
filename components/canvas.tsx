@@ -1,7 +1,7 @@
 "use client"
 
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 
 import { ContextPanel, type PanelItem } from "@/components/context-panel"
 import { ItemDialog, type DialogState } from "@/components/item-dialog"
@@ -26,6 +26,7 @@ import {
   saveLayouts,
   useLayouts,
 } from "@/lib/layout-store"
+import { submitOnEnter, useEnterOutsideDialog } from "@/lib/dialog-keys"
 import { CATALOG_BY_TYPE } from "@/lib/catalog"
 import type { LayoutKind } from "@/lib/layout-store"
 import type { GapKey } from "@/lib/tailwind"
@@ -38,6 +39,7 @@ export function Canvas() {
   const [columns, setColumns] = useState(2)
   const [gap, setGap] = useState<GapKey>("4")
 
+  const layoutForm = useRef<HTMLFormElement>(null)
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; title?: string; items: PanelItem[] } | null>(null)
 
@@ -80,7 +82,19 @@ export function Canvas() {
     return best
   }
 
+  useEnterOutsideDialog(layoutOpen, () => layoutForm.current?.requestSubmit())
+
   const closeMenu = useCallback(() => setMenu(null), [])
+
+  /** A plain click on an empty column, flex layout or children area adds an item to it. */
+  function handleClick(e: React.MouseEvent<HTMLElement>) {
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
+    const zone = editorTarget(e)?.zone
+    if (!zone || zone.dataset.empty !== "true") return
+    const id = Number(zone.dataset.id)
+    const cell = zone.dataset.zone === "cell" ? Number(zone.dataset.cell) : 0
+    setDialog({ mode: "create", layoutId: id, cell })
+  }
 
   function handleContextMenu(e: React.MouseEvent<HTMLElement>) {
     const hit = editorTarget(e)
@@ -179,6 +193,7 @@ export function Canvas() {
 
   return (
     <PageShell
+      onClick={handleClick}
       onContextMenuCapture={handleContextMenu}
       onPointerDownCapture={swallowSecondary}
       onMouseDownCapture={swallowSecondary}
@@ -200,8 +215,11 @@ export function Canvas() {
       {menu && <ContextPanel {...menu} onClose={closeMenu} />}
 
       <Dialog open={layoutOpen} onOpenChange={setLayoutOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
-          <form onSubmit={addLayout} className="flex flex-col gap-4">
+        <DialogContent
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => submitOnEnter(e, layoutForm.current)}
+        >
+          <form ref={layoutForm} onSubmit={addLayout} className="flex flex-col gap-4">
             <DialogHeader>
               <DialogTitle>New layout</DialogTitle>
               <DialogDescription>

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useEnterOutsideDialog } from "@/lib/dialog-keys"
 import { exportDesign, parseDesign, type ParsedDesign } from "@/lib/design-io"
 import { saveGlobals, useGlobals } from "@/lib/globals-store"
 import { saveLayouts, useLayouts } from "@/lib/layout-store"
@@ -26,7 +27,14 @@ export function DesignIO() {
   const layouts = useLayouts()
   const globals = useGlobals()
   const fileInput = useRef<HTMLInputElement>(null)
+  const replaceButton = useRef<HTMLButtonElement>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
+
+  // Enter accepts: replace on the confirmation, dismiss on the notices.
+  useEnterOutsideDialog(notice !== null, () => {
+    if (notice?.kind === "confirm") apply(notice.design)
+    else setNotice(null)
+  })
 
   function download() {
     const blob = new Blob([exportDesign(layouts, globals)], { type: "application/json" })
@@ -90,7 +98,10 @@ export function DesignIO() {
       />
 
       <Dialog open={notice !== null} onOpenChange={(o) => !o && setNotice(null)}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
+        <DialogContent
+          onClick={(e) => e.stopPropagation()}
+          initialFocus={notice?.kind === "confirm" ? replaceButton : true}
+        >
           {notice?.kind === "error" && (
             <DialogHeader>
               <DialogTitle>Couldn&apos;t import</DialogTitle>
@@ -110,7 +121,9 @@ export function DesignIO() {
                 <Button variant="outline" onClick={() => setNotice(null)}>
                   Cancel
                 </Button>
-                <Button onClick={() => apply(notice.design)}>Replace</Button>
+                <Button ref={replaceButton} onClick={() => apply(notice.design)}>
+                  Replace
+                </Button>
               </DialogFooter>
             </>
           )}

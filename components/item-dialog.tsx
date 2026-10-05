@@ -1,7 +1,7 @@
 "use client"
 
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { DataFields } from "@/components/data-editors"
 import { LayoutItemsSorter } from "@/components/layout-items-sorter"
@@ -33,6 +33,7 @@ import {
   type UIComponent,
 } from "@/lib/layout-store"
 import type { ComponentData } from "@/lib/catalog-types"
+import { submitOnEnter, useEnterOutsideDialog } from "@/lib/dialog-keys"
 import { normalizeGap, type GapKey, type ItemStyle } from "@/lib/tailwind"
 import { cn } from "@/lib/utils"
 
@@ -81,6 +82,7 @@ export function ItemDialog({
     ...editingComponent?.data,
   }))
   const [query, setQuery] = useState("")
+  const formRef = useRef<HTMLFormElement>(null)
 
   const entry = editingComponent
     ? CATALOG_BY_TYPE.get(editingComponent.type)
@@ -90,6 +92,21 @@ export function ItemDialog({
   const q = query.trim().toLowerCase()
   const visible = PICKER_ENTRIES.filter(
     (c) => !q || c.label.toLowerCase().includes(q) || c.type.includes(q)
+  )
+
+  /** Adds the selected entry; if the search hides the selection, the first match is used. */
+  function acceptPicker(preferred?: PickerEntry) {
+    const chosen = preferred ?? visible.find((c) => c.type === type) ?? visible[0]
+    if (!chosen) return
+    const changed = chosen.type !== type
+    if (changed) pick(chosen)
+    // State updates from pick() must be applied before the form handler reads them.
+    setTimeout(() => formRef.current?.requestSubmit(), 0)
+  }
+
+  // Enter works right after opening, before focus has moved into the dialog.
+  useEnterOutsideDialog(true, () =>
+    dialog.mode === "create" ? acceptPicker() : formRef.current?.requestSubmit()
   )
 
   function pick(c: PickerEntry) {
@@ -193,6 +210,17 @@ export function ItemDialog({
       {dialog.mode === "create" ? (
         <DialogContent
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey || e.defaultPrevented) return
+            // Enter in the search box (outside the form) or on the dialog itself accepts.
+            if (!submitOnEnter(e, formRef.current)) {
+              const t = e.target
+              if (t instanceof HTMLInputElement && !formRef.current?.contains(t)) {
+                e.preventDefault()
+                acceptPicker()
+              }
+            }
+          }}
           className="flex h-dvh w-screen max-w-none flex-col gap-4 rounded-none p-6 sm:max-w-none"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -207,9 +235,6 @@ export function ItemDialog({
               placeholder="Search components..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.preventDefault()
-              }}
               className="max-w-sm"
             />
             <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3 overflow-y-auto p-1">
@@ -227,9 +252,12 @@ export function ItemDialog({
                   onClick={() => pick(c)}
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return
-                    if (e.key === "Enter" || e.key === " ") {
+                    if (e.key === " ") {
                       e.preventDefault()
                       pick(c)
+                    } else if (e.key === "Enter") {
+                      e.preventDefault()
+                      acceptPicker(c)
                     }
                   }}
                   className={cn(
@@ -252,7 +280,7 @@ export function ItemDialog({
               ))}
             </div>
             {/* Previews above can contain forms of their own, so only the fields are in this form. */}
-            <form onSubmit={submit} className="flex items-end gap-4">
+            <form ref={formRef} onSubmit={submit} className="flex items-end gap-4">
               {type === "layout" ? (
                 <div className="w-80">
                   <LayoutFields
@@ -275,9 +303,10 @@ export function ItemDialog({
       ) : editingLayout ? (
         <DialogContent
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => submitOnEnter(e, formRef.current)}
           className="flex h-dvh w-screen max-w-none flex-col gap-4 rounded-none p-6 sm:max-w-none"
         >
-          <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4">
+          <form ref={formRef} onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-4">
             <DialogHeader>
               <DialogTitle>Edit layout</DialogTitle>
               <DialogDescription>
@@ -291,7 +320,15 @@ export function ItemDialog({
                 <TabsTrigger value="style">Style</TabsTrigger>
               </TabsList>
               <TabsContent value="items" className="min-h-0 flex-1 overflow-y-auto p-1">
-                <LayoutItemsSorter cells={cells} flex={layoutKind === "flex"} onChange={setCells} />
+                <LayoutItemsSorter
+                  cells={cells}
+                  flex={layoutKind === "flex"}
+                  onChange={setCells}
+                  onAdd={(cell) => {
+                    saveEdits()
+                    onNavigate({ mode: "create", layoutId: editingLayout.id, cell })
+                  }}
+                />
               </TabsContent>
               <TabsContent value="layout" className="min-h-0 flex-1 overflow-y-auto p-1">
                 <div className="flex max-w-xl flex-col gap-3">
@@ -326,9 +363,10 @@ export function ItemDialog({
       ) : (
         <DialogContent
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => submitOnEnter(e, formRef.current)}
           className={cn("max-h-[90dvh] overflow-y-auto sm:max-w-lg", entry?.fields && "sm:max-w-2xl")}
         >
-          <form onSubmit={submit} className="flex flex-col gap-5">
+          <form ref={formRef} onSubmit={submit} className="flex flex-col gap-5">
             <DialogHeader>
               <DialogTitle>
                 {`Edit ${entry?.label ?? "component"}`}
